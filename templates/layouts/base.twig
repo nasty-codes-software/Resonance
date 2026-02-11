@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        resonance: {
+                            'bg-primary': '#36393f',
+                            'bg-secondary': '#2f3136',
+                            'bg-tertiary': '#202225',
+                            'bg-hover': 'rgba(79, 84, 92, 0.16)',
+                            'bg-active': 'rgba(79, 84, 92, 0.24)',
+                            'bg-selected': 'rgba(79, 84, 92, 0.32)',
+                            'text-primary': '#dcddde',
+                            'text-secondary': '#8e9297',
+                            'text-muted': '#72767d',
+                            'text-link': '#00b0f4',
+                            'brand': '#5865f2',
+                            'brand-hover': '#4752c4',
+                            'danger': '#ed4245',
+                            'success': '#3ba55c',
+                            'warning': '#faa61a',
+                            'input': '#40444b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="/assets/css/app.css" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <style>
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #202225; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #1a1b1e; }
+        
+        /* Typing dots animation */
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+        .typing-dot { animation: typing-bounce 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+    
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-resonance-bg-tertiary text-resonance-text-primary font-sans antialiased {% block body_class %}{% endblock %}">
+    {% block body %}
+        {% if flash.success %}
+            <div class="fixed top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-resonance-success text-white rounded-md z-50 transition-opacity" id="flash-message">
+                {{ flash.success|raw }}
+            </div>
+        {% endif %}
+        
+        {% if flash.error %}
+            <div class="fixed top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-resonance-danger text-white rounded-md z-50 transition-opacity" id="flash-message">
+                {{ flash.error|raw }}
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    {% endblock %}
+    
+    {% block scripts %}
+        <script>
+            window.APP_CONFIG = {
+                wsPort: '{{ ws_port }}',
+                wsHost: window.location.hostname,
+                userId: {{ auth() ? auth().id : 'null' }},
+                username: '{{ auth() ? auth().username : '' }}',
+                avatar: '{{ auth() ? auth().avatar|default('') : '' }}',
+                csrfToken: '{{ csrf_token() }}',
+                dmCallTimeout: {{ dm_call_timeout|default(120) }}
+            };
+        </script>
+    {% endblock %}
+</body>
+</html>

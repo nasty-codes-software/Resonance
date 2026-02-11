@@ -1,0 +1,1532 @@
+{% extends 'layouts/base.twig' %}
+
+{% block title %}{{ app_name }}{% endblock %}
+{% block body_class %}h-screen overflow-hidden{% endblock %}
+
+{% block content %}
+<div class="flex h-full">
+    <!-- Server Sidebar -->
+    <aside class="w-[72px] bg-resonance-bg-tertiary flex flex-col items-center py-3">
+        <!-- Logo at top (click to go back to server) -->
+        <button id="btn-home" class="server-icon w-12 h-12 bg-resonance-brand rounded-2xl hover:rounded-xl flex items-center justify-center font-bold text-white cursor-pointer transition-all duration-200" title="{{ app_name }}">
+            <span class="material-icons">hub</span>
+        </button>
+        
+        <!-- Separator -->
+        <div class="w-8 h-0.5 bg-resonance-bg-hover rounded-full my-2"></div>
+        
+        <!-- Friends Button -->
+        <button id="btn-friends" class="server-icon relative w-12 h-12 bg-resonance-bg-primary rounded-full hover:rounded-xl hover:bg-resonance-brand flex items-center justify-center text-resonance-text-muted hover:text-white cursor-pointer transition-all duration-200" title="Friends">
+            <span class="material-icons">people</span>
+            <span id="pending-requests-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-resonance-danger rounded-full text-xs font-bold text-white items-center justify-center hidden">0</span>
+        </button>
+        
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+        
+        <!-- Server Settings at bottom (Admin only) -->
+        {% if 'administrator' in permissions|default([]) %}
+        <button class="w-12 h-12 bg-resonance-bg-primary rounded-full hover:rounded-xl hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-muted hover:text-white cursor-pointer transition-all duration-200" id="btn-server-settings" title="Server Settings">
+            <span class="material-icons">settings</span>
+        </button>
+        {% endif %}
+    </aside>
+    
+    <!-- Server View (Channels + Main Content) -->
+    <div id="server-view" class="flex-1 flex min-w-0">
+    
+    <!-- Channel Sidebar -->
+    <aside class="w-60 bg-resonance-bg-secondary flex flex-col">
+        <!-- Server Header -->
+        <div class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm">
+            <h2 class="font-semibold text-white truncate">{{ app_name }}</h2>
+            <span class="material-icons ml-auto text-resonance-text-muted">expand_more</span>
+        </div>
+        
+        <!-- Channels Container -->
+        <div class="flex-1 overflow-y-auto px-2 py-4 space-y-4" id="channels-container">
+            {% for category in categories %}
+            <div class="category" data-category-id="{{ category.id }}">
+                <!-- Category Header -->
+                <div class="category-header flex items-center px-1 py-1 cursor-pointer group hover:text-resonance-text-primary" data-category-id="{{ category.id }}">
+                    <span class="text-xs font-semibold text-resonance-text-muted uppercase tracking-wide">{{ category.name }}</span>
+                    <span class="material-icons text-xs mr-0.5 text-resonance-text-muted transition-transform category-arrow ms-1">expand_more</span>
+                    <div class="category-actions hidden group-hover:flex gap-0.5 ms-auto">
+                        <button class="rounded hover:bg-resonance-bg-hover btn-add-channel" data-category-id="{{ category.id }}" title="Create Channel">
+                            <span class="material-icons text-sm text-resonance-text-muted hover:text-resonance-text-primary">add</span>
+                        </button>
+                        <button class="rounded hover:bg-resonance-bg-hover btn-edit-category" data-category-id="{{ category.id }}" title="Edit Category">
+                            <span class="material-icons text-sm text-resonance-text-muted hover:text-resonance-text-primary">settings</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Text Channels -->
+                <div class="category-channels space-y-0.5 mt-1">
+                    {% for channel in category.text_channels %}
+                    <div class="channel-item text-channel flex items-center px-2 py-1.5 rounded cursor-pointer group
+                                {% if activeChannel and activeChannel.id == channel.id %}bg-resonance-bg-selected text-white{% else %}text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary{% endif %}" 
+                         data-channel-id="{{ channel.id }}" data-channel-type="text">
+                        <span class="material-icons text-xl mr-1.5 flex-shrink-0">tag</span>
+                        <span class="channel-name text-sm font-medium truncate flex-1">{{ channel.name }}</span>
+                        <div class="channel-actions hidden group-hover:flex gap-0.5 flex-shrink-0">
+                            <button class="p-0.5 rounded hover:bg-resonance-bg-active btn-edit-channel" data-channel-id="{{ channel.id }}" data-channel-type="text">
+                                <span class="material-icons text-base text-resonance-text-muted hover:text-resonance-text-primary">settings</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Voice Channels -->
+                    {% for channel in category.voice_channels %}
+                    <div class="voice-channel-item" data-channel-id="{{ channel.id }}">
+                        <div class="voice-channel-header flex items-center px-2 py-1.5 rounded cursor-pointer group text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary" data-channel-id="{{ channel.id }}">
+                            <span class="material-icons text-xl mr-1.5 flex-shrink-0">volume_up</span>
+                            <span class="channel-name text-sm font-medium truncate flex-1">{{ channel.name }}</span>
+                            <div class="channel-actions hidden group-hover:flex gap-0.5 flex-shrink-0">
+                                <button class="p-0.5 rounded hover:bg-resonance-bg-active btn-edit-channel" data-channel-id="{{ channel.id }}" data-channel-type="voice">
+                                    <span class="material-icons text-base text-resonance-text-muted hover:text-resonance-text-primary">settings</span>
+                                </button>
+                            </div>
+                        </div>
+                        <ul class="voice-members pl-7 space-y-0.5" id="voice-members-{{ channel.id }}">
+                            {% for member in channel.members %}
+                            <li class="voice-member flex items-center gap-2 py-1 px-2 rounded text-resonance-text-secondary text-sm group" data-user-id="{{ member.user_id }}">
+                                <div class="member-avatar">
+                                    {% if member.avatar %}
+                                    <img src="{{ member.avatar }}" class="w-6 h-6 rounded-full object-cover" alt="">
+                                    {% else %}
+                                    <div class="w-6 h-6 rounded-full bg-resonance-brand flex items-center justify-center text-xs font-semibold text-white">
+                                        {{ member.username|slice(0,1)|upper }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <span class="member-name truncate flex-1">{{ member.username }}</span>
+                                {% if member.muted %}
+                                <span class="material-icons text-sm text-resonance-danger">mic_off</span>
+                                {% endif %}
+                                {% if 'move_members' in permissions|default([]) or 'administrator' in permissions|default([]) %}
+                                <button class="btn-disconnect-member hidden group-hover:block p-0.5 rounded hover:bg-resonance-danger/20" data-user-id="{{ member.user_id }}" title="Disconnect">
+                                    <span class="material-icons text-sm text-resonance-danger">call_end</span>
+                                </button>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Uncategorized Channels -->
+            {% if uncategorized.text_channels|length > 0 or uncategorized.voice_channels|length > 0 %}
+            <div class="category" data-category-id="0">
+                <div class="category-header flex items-center px-1 py-1 cursor-pointer group">
+                    <span class="material-icons text-xs mr-0.5 text-resonance-text-muted">expand_more</span>
+                    <span class="text-xs font-semibold text-resonance-text-muted uppercase tracking-wide">Channels</span>
+                </div>
+                <div class="category-channels space-y-0.5 mt-1">
+                    {% for channel in uncategorized.text_channels %}
+                    <div class="channel-item text-channel flex items-center px-2 py-1.5 rounded cursor-pointer text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary
+                                {% if activeChannel and activeChannel.id == channel.id %}bg-resonance-bg-selected text-white{% endif %}" 
+                         data-channel-id="{{ channel.id }}" data-channel-type="text">
+                        <span class="material-icons text-xl mr-1.5">tag</span>
+                        <span class="text-sm font-medium truncate">{{ channel.name }}</span>
+                    </div>
+                    {% endfor %}
+                    {% for channel in uncategorized.voice_channels %}
+                    <div class="voice-channel-item" data-channel-id="{{ channel.id }}">
+                        <div class="voice-channel-header flex items-center px-2 py-1.5 rounded cursor-pointer text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary" data-channel-id="{{ channel.id }}">
+                            <span class="material-icons text-xl mr-1.5">volume_up</span>
+                            <span class="text-sm font-medium truncate">{{ channel.name }}</span>
+                        </div>
+                        <ul class="voice-members pl-7" id="voice-members-{{ channel.id }}"></ul>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Add Category Button -->
+        <div class="px-2 py-2">
+            <button class="w-full py-2 text-sm text-resonance-text-muted hover:text-resonance-text-primary hover:bg-resonance-bg-hover rounded transition-colors flex items-center justify-center gap-1" id="btn-add-category">
+                <span class="material-icons text-lg">add</span>
+                <span>Add Category</span>
+            </button>
+        </div>
+        
+        <!-- Voice Connection Panel -->
+        <div class="voice-connection-panel bg-resonance-bg-tertiary border-t border-black/20 px-2 py-2 hidden" id="voice-connection-panel">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 bg-resonance-success rounded-full animate-pulse"></span>
+                        <span class="text-xs font-semibold text-resonance-success">Voice Connected</span>
+                    </div>
+                    <span class="text-xs text-resonance-text-muted truncate block" id="connected-voice-channel"></span>
+                </div>
+                <button class="w-8 h-8 bg-resonance-danger/20 hover:bg-resonance-danger rounded flex items-center justify-center text-resonance-danger hover:text-white transition-colors" id="btn-disconnect-voice" title="Disconnect">
+                    <span class="material-icons text-lg">call_end</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- User Panel -->
+        <div class="user-panel bg-resonance-bg-tertiary/50 px-2 py-2 flex items-center gap-2" id="user-panel">
+            <div class="user-info flex items-center gap-2 flex-1 min-w-0 cursor-pointer" id="user-info-panel">
+                <div class="user-avatar">
+                    {% if userProfile and userProfile.avatar %}
+                    <img src="{{ userProfile.avatar }}" alt="Avatar" class="w-8 h-8 rounded-full object-cover">
+                    {% else %}
+                    <div class="w-7 h-7 rounded-full bg-resonance-brand flex items-center justify-center text-sm font-semibold text-white">
+                        {{ auth().username|slice(0,1)|upper }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex flex-col min-w-0">
+                    <span class="text-sm font-semibold text-white truncate">
+                        {{ userProfile.display_name|default(auth().username) }}
+                    </span>
+                    <span class="text-xs text-resonance-text-secondary truncate">
+                        {% if userProfile and userProfile.custom_status %}
+                            {{ userProfile.custom_status }}
+                        {% else %}
+                            Online
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="user-controls flex gap-0.5">
+                <button class="w-8 h-8 rounded hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-mute" title="Mute">
+                    <span class="material-icons text-xl">mic</span>
+                </button>
+                <button class="w-8 h-8 rounded hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-deafen" title="Deafen">
+                    <span class="material-icons text-xl">headphones</span>
+                </button>
+                <button class="w-8 h-8 rounded hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-settings" title="Settings">
+                    <span class="material-icons text-xl">settings</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col bg-resonance-bg-primary min-w-0">
+        <!-- Channel Header -->
+        <header class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm gap-2" id="channel-header">
+            <span class="material-icons text-2xl text-resonance-text-muted" id="channel-header-icon">tag</span>
+            <span class="font-semibold text-white" id="current-channel-name">
+                {{ activeChannel ? activeChannel.name : 'Select a channel' }}
+            </span>
+            <span class="text-sm text-resonance-text-secondary truncate hidden" id="channel-description">
+                {% if activeChannel and activeChannel.description %}{{ activeChannel.description }}{% endif %}
+            </span>
+            
+            <!-- Channel Header Actions -->
+            <div class="ml-auto flex items-center gap-1" id="channel-header-actions">
+                <button class="p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-pinned-messages" title="Pinned Messages">
+                    <span class="material-icons">push_pin</span>
+                </button>
+                <button class="p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-toggle-members" title="Show/Hide Members">
+                    <span class="material-icons">people</span>
+                </button>
+                <div class="relative ml-2">
+                    <input type="text" id="channel-search-input" placeholder="Search" 
+                           class="w-36 px-3 py-1 text-sm bg-resonance-bg-tertiary rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:w-56 transition-all">
+                    <span class="material-icons absolute right-2 top-1/2 -translate-y-1/2 text-base text-resonance-text-muted pointer-events-none">search</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Text Channel View -->
+        <div id="text-channel-view" class="flex-1 flex flex-col min-h-0">
+            <!-- Messages Area -->
+            <div class="flex-1 overflow-y-auto" id="messages-container">
+                <div id="messages-list">
+                    {% for message in messages %}
+                    {% set isOwnMessage = message.user_id == auth().id %}
+                    {% set canManageMessages = 'manage_messages' in permissions|default([]) %}
+                    {% set isAdmin = 'administrator' in permissions|default([]) %}
+                    {% set canEdit = isOwnMessage %}
+                    {% set canDelete = isOwnMessage or canManageMessages or isAdmin %}
+                    {% set canPin = canManageMessages or isAdmin %}
+                    <div class="message flex gap-4 p-4 hover:bg-resonance-bg-secondary rounded transition-colors group relative" data-message-id="{{ message.id }}" data-user-id="{{ message.user_id }}">
+                        <div class="message-avatar">
+                            {% if message.avatar %}
+                            <img src="{{ message.avatar }}" class="w-10 h-10 rounded-full object-cover cursor-pointer user-clickable" data-user-id="{{ message.user_id }}" alt="">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-full bg-resonance-brand flex items-center justify-center text-white font-semibold cursor-pointer user-clickable" data-user-id="{{ message.user_id }}">{{ message.username|slice(0,1)|upper }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="message-content flex-1 min-w-0">
+                            <div class="message-header flex items-center gap-2 mb-1">
+                                <span class="message-author font-medium text-white hover:underline cursor-pointer user-clickable" data-user-id="{{ message.user_id }}">{{ message.username }}</span>
+                                <span class="message-timestamp text-xs text-resonance-text-muted">{{ message.created_at }}</span>
+                                {% if message.edited %}<span class="text-xs text-resonance-text-muted">(edited)</span>{% endif %}
+                                {% if message.pinned %}<span class="material-icons text-xs text-yellow-500 ml-1" title="Pinned">push_pin</span>{% endif %}
+                            </div>
+                            <div class="message-text text-resonance-text-primary break-words">{{ message.content }}</div>
+                            {% if message.attachment_url %}
+                            <div class="message-attachment mt-2">
+                                {% if message.attachment_type == 'image' %}
+                                <a href="{{ message.attachment_url }}" target="_blank" class="block">
+                                    <img src="{{ message.attachment_url }}" alt="{{ message.attachment_name|default('Image') }}" class="max-w-md max-h-80 rounded-lg border border-resonance-bg-tertiary hover:border-resonance-brand transition-colors cursor-pointer">
+                                </a>
+                                {% else %}
+                                <a href="{{ message.attachment_url }}" download="{{ message.attachment_name|default('file') }}" class="inline-flex items-center gap-2 px-3 py-2 bg-resonance-bg-tertiary rounded-lg border border-resonance-bg-modifier hover:bg-resonance-bg-modifier transition-colors">
+                                    <span class="material-icons text-resonance-text-muted">attach_file</span>
+                                    <span class="text-resonance-text-primary">{{ message.attachment_name|default('Download file') }}</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if canPin or canEdit or canDelete %}
+                        <div class="message-actions absolute right-2 top-2 hidden group-hover:flex bg-resonance-bg-tertiary rounded shadow-lg border border-resonance-bg-hover">
+                            {% if canPin %}
+                            <button class="btn-pin-message p-1.5 hover:bg-resonance-bg-hover rounded-l transition-colors" title="{{ message.pinned ? 'Unpin' : 'Pin' }}">
+                                <span class="material-icons text-sm text-resonance-text-muted hover:text-yellow-500">push_pin</span>
+                            </button>
+                            {% endif %}
+                            {% if canEdit %}
+                            <button class="btn-edit-message p-1.5 hover:bg-resonance-bg-hover transition-colors" title="Edit">
+                                <span class="material-icons text-sm text-resonance-text-muted hover:text-resonance-brand">edit</span>
+                            </button>
+                            {% endif %}
+                            {% if canDelete %}
+                            <button class="btn-delete-message p-1.5 hover:bg-resonance-bg-hover rounded-r transition-colors" title="Delete">
+                                <span class="material-icons text-sm text-resonance-text-muted hover:text-resonance-danger">delete</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="flex flex-col items-center justify-center h-full text-resonance-text-muted" id="no-messages">
+                        <span class="material-icons text-6xl mb-4">chat_bubble_outline</span>
+                        <p>No messages yet. Be the first to send one!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div class="typing-indicator px-4 py-1 text-xs text-resonance-text-secondary hidden" id="typing-indicator">
+                <span class="inline-flex gap-0.5 mr-1">
+                    <span class="typing-dot w-1.5 h-1.5 bg-resonance-text-secondary rounded-full"></span>
+                    <span class="typing-dot w-1.5 h-1.5 bg-resonance-text-secondary rounded-full"></span>
+                    <span class="typing-dot w-1.5 h-1.5 bg-resonance-text-secondary rounded-full"></span>
+                </span>
+                <span id="typing-text">Someone is typing</span>
+            </div>
+            
+            <!-- Message Input -->
+            <div class="px-4 pb-6" id="message-input-container">
+                <form id="message-form">
+                    <input type="hidden" id="current-channel-id" value="{{ activeChannel ? activeChannel.id : '' }}">
+                    <div class="flex items-center bg-resonance-input rounded-lg">
+                        <button type="button" class="p-3 text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-attach-file" title="Attach File">
+                            <span class="material-icons">add_circle</span>
+                        </button>
+                        <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.txt,.zip">
+                        <input 
+                            type="text" 
+                            id="message-input" 
+                            placeholder="Message #{{ activeChannel ? activeChannel.name : 'channel' }}"
+                            autocomplete="off"
+                            maxlength="2000"
+                            class="flex-1 bg-transparent py-3 text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none"
+                        >
+                        <button type="button" class="p-3 text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-emoji-picker" title="Emoji">
+                            <span class="material-icons">emoji_emotions</span>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Emoji Picker Popup -->
+                <div id="emoji-picker" class="absolute bottom-20 right-8 bg-resonance-bg-secondary rounded-lg shadow-xl p-3 hidden z-50">
+                    <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                        {% set emojis = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👋', '🖐️', '✋', '🖖', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '💔', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '🔥', '⭐', '✨', '💯', '💢', '💥', '💫', '💦', '💨', '🎉', '🎊'] %}
+                        {% for emoji in emojis %}
+                        <button type="button" class="emoji-btn w-8 h-8 flex items-center justify-center text-xl hover:bg-resonance-bg-hover rounded transition-colors" data-emoji="{{ emoji }}">{{ emoji }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Voice Channel View (Discord-style) -->
+        <div id="voice-channel-view" class="flex-1 flex flex-col hidden">
+            <!-- Spotlight View (for focused user) -->
+            <div id="voice-spotlight" class="hidden absolute inset-0 z-40 bg-resonance-bg-primary flex flex-col">
+                <div class="flex-1 flex items-center justify-center p-4">
+                    <div id="spotlight-content" class="relative w-full h-full max-w-5xl max-h-[80vh] rounded-xl overflow-hidden bg-resonance-bg-tertiary">
+                        <!-- Spotlight video/avatar will be inserted here -->
+                    </div>
+                </div>
+                <div class="flex items-center justify-center gap-4 p-4">
+                    <button id="btn-exit-spotlight" class="px-4 py-2 bg-resonance-bg-secondary hover:bg-resonance-bg-hover rounded-lg text-resonance-text-primary flex items-center gap-2">
+                        <span class="material-icons">grid_view</span>
+                        <span>Back to Grid</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Voice Members Grid -->
+            <div class="flex-1 overflow-hidden relative" id="voice-members-grid">
+                <div class="voice-grid" id="voice-members-display" data-count="0">
+                    <!-- Voice members will be displayed here dynamically -->
+                </div>
+                
+                <!-- Fullscreen Toggle Button (bottom right of channel area) -->
+                <button class="voice-fullscreen-toggle" id="btn-voice-fullscreen" title="Toggle Fullscreen">
+                    <span class="material-icons">fullscreen</span>
+                </button>
+            </div>
+            
+            <!-- Voice Controls Bar -->
+            <div class="bg-resonance-bg-tertiary border-t border-black/20 p-4">
+                <div class="flex items-center justify-center gap-4">
+                    <!-- Mute Button -->
+                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-mute" title="Mute">
+                        <span class="material-icons text-2xl">mic</span>
+                    </button>
+                    
+                    <!-- Deafen Button -->
+                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-deafen" title="Deafen">
+                        <span class="material-icons text-2xl">headphones</span>
+                    </button>
+                    
+                    <!-- Camera Button -->
+                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-camera" title="Toggle Camera">
+                        <span class="material-icons text-2xl">videocam_off</span>
+                    </button>
+                    
+                    <!-- Screen Share Button -->
+                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-screenshare" title="Share Screen">
+                        <span class="material-icons text-2xl">screen_share</span>
+                    </button>
+                    
+                    <!-- Soundboard Toggle -->
+                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-soundboard" title="Soundboard">
+                        <span class="material-icons text-2xl">music_note</span>
+                    </button>
+                    
+                    <!-- Disconnect Button -->
+                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-danger hover:bg-red-600 flex items-center justify-center text-white transition-colors" id="voice-btn-disconnect" title="Disconnect">
+                        <span class="material-icons text-2xl">call_end</span>
+                    </button>
+                </div>
+                
+                <!-- Soundboard Panel (togglable) -->
+                <div class="soundboard-panel mt-4 hidden" id="soundboard-panel">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-resonance-text-muted uppercase">Soundboard</h3>
+                        <button class="p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-resonance-text-primary" id="btn-upload-sound" title="Upload Sound">
+                            <span class="material-icons text-lg">add</span>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-center max-h-32 overflow-y-auto" id="soundboard">
+                        {% for sound in sounds %}
+                        <button class="sound-btn px-4 py-2 bg-resonance-bg-secondary hover:bg-resonance-brand rounded-lg text-sm text-resonance-text-primary transition-colors" data-sound-id="{{ sound.id }}" title="{{ sound.name }}">
+                            {{ sound.name|slice(0, 12) }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+<!-- Voice Tile Context Menu -->
+<div id="voice-tile-context-menu" class="voice-context-menu hidden">
+    <div class="context-menu-header">
+        <span class="context-menu-username" id="ctx-menu-username">User</span>
+    </div>
+    <div class="context-menu-section" id="ctx-volume-section">
+        <label class="context-menu-label">Volume</label>
+        <div class="context-menu-slider-row">
+            <span class="material-icons text-sm text-resonance-text-muted">volume_down</span>
+            <input type="range" id="ctx-volume-slider" min="0" max="200" value="100" class="context-menu-slider">
+            <span class="material-icons text-sm text-resonance-text-muted">volume_up</span>
+            <span class="context-menu-volume-value" id="ctx-volume-value">100%</span>
+        </div>
+    </div>
+    <div class="context-menu-divider" id="ctx-divider-1"></div>
+    <!-- For user tiles: mute user audio -->
+    <button class="context-menu-item" id="ctx-toggle-mute">
+        <span class="material-icons text-sm">volume_off</span>
+        <span>Mute User</span>
+    </button>
+    <!-- For user tiles: hide their camera video locally -->
+    <button class="context-menu-item" id="ctx-toggle-video">
+        <span class="material-icons text-sm">videocam_off</span>
+        <span>Hide Video</span>
+    </button>
+    <!-- For screen share tiles: mute stream audio -->
+    <button class="context-menu-item" id="ctx-toggle-stream-mute">
+        <span class="material-icons text-sm">volume_off</span>
+        <span>Mute Stream</span>
+    </button>
+    <div class="context-menu-divider" id="ctx-divider-2"></div>
+    <!-- For remote screen share tiles: watch/leave stream -->
+    <button class="context-menu-item" id="ctx-toggle-stream">
+        <span class="material-icons text-sm">live_tv</span>
+        <span>Watch Stream</span>
+    </button>
+    <!-- For own screen share tile: toggle stream audio sharing -->
+    <button class="context-menu-item" id="ctx-toggle-stream-audio">
+        <span class="material-icons text-sm">mic</span>
+        <span>Share Stream Audio</span>
+    </button>
+</div>
+
+    <!-- Members Sidebar (for text channels) -->
+    <aside class="w-60 bg-resonance-bg-secondary flex flex-col" id="members-sidebar">
+        <div class="flex-1 overflow-y-auto px-2 py-3">
+            <!-- Online Members -->
+            <div class="mb-4">
+                <h3 class="px-2 text-xs font-semibold text-resonance-text-muted uppercase mb-2">Online — <span id="online-count">{{ allUsers|filter(u => u.status != 'offline')|length }}</span></h3>
+                <ul class="space-y-0.5" id="online-users">
+                    {% for user in allUsers|filter(u => u.status != 'offline') %}
+                    <li class="member-item flex items-center gap-3 px-2 py-1.5 rounded cursor-pointer hover:bg-resonance-bg-hover user-clickable" data-user-id="{{ user.id }}">
+                        <div class="relative">
+                            {% if user.avatar %}
+                            <img src="{{ user.avatar }}" class="w-8 h-8 rounded-full object-cover" alt="">
+                            {% else %}
+                            <div class="w-8 h-8 rounded-full bg-resonance-brand flex items-center justify-center text-sm font-semibold text-white" {% if user.role_color %}style="border: 2px solid {{ user.role_color }}"{% endif %}>
+                                {{ user.username|slice(0,1)|upper }}
+                            </div>
+                            {% endif %}
+                            <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-resonance-success border-2 border-resonance-bg-secondary rounded-full"></span>
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-sm text-resonance-text-secondary truncate" {% if user.role_color %}style="color: {{ user.role_color }}"{% endif %}>
+                                {{ user.display_name|default(user.username) }}
+                            </span>
+                            {% if user.custom_status %}
+                            <span class="text-xs text-resonance-text-muted truncate">{{ user.custom_status }}</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Offline Members -->
+            <div>
+                <h3 class="px-2 text-xs font-semibold text-resonance-text-muted uppercase mb-2">Offline — <span id="offline-count">{{ allUsers|filter(u => u.status == 'offline')|length }}</span></h3>
+                <ul class="space-y-0.5" id="offline-users">
+                    {% for user in allUsers|filter(u => u.status == 'offline') %}
+                    <li class="member-item flex items-center gap-3 px-2 py-1.5 rounded cursor-pointer hover:bg-resonance-bg-hover user-clickable opacity-50" data-user-id="{{ user.id }}">
+                        <div class="relative">
+                            {% if user.avatar %}
+                            <img src="{{ user.avatar }}" class="w-8 h-8 rounded-full object-cover grayscale" alt="">
+                            {% else %}
+                            <div class="w-8 h-8 rounded-full bg-resonance-bg-tertiary flex items-center justify-center text-sm font-semibold text-resonance-text-muted">
+                                {{ user.username|slice(0,1)|upper }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-sm text-resonance-text-muted truncate">
+                                {{ user.display_name|default(user.username) }}
+                            </span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </aside>
+    
+    </div><!-- End server-view -->
+
+    <!-- Friends View (Hidden by default) -->
+    <div id="friends-view" class="flex-1 flex min-w-0 hidden">
+        <!-- DM Conversations Sidebar -->
+        <aside class="w-60 bg-resonance-bg-secondary flex flex-col">
+            <!-- Friends Header -->
+            <div class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm">
+                <button id="btn-back-to-server" class="p-1 -ml-1 mr-2 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                    <span class="material-icons text-lg">arrow_back</span>
+                </button>
+                <h2 class="font-semibold text-white truncate">Friends</h2>
+            </div>
+            
+            <!-- Search -->
+            <div class="px-2 py-2">
+                <input type="text" placeholder="Find or start a conversation" 
+                       class="w-full px-3 py-1.5 text-sm bg-resonance-bg-tertiary rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none">
+            </div>
+            
+            <!-- Direct Messages List -->
+            <div class="px-2 pb-2">
+                <h3 class="px-2 py-1 text-xs font-semibold text-resonance-text-muted uppercase">Direct Messages</h3>
+            </div>
+            <div class="flex-1 overflow-y-auto px-2 space-y-0.5" id="dm-conversations-list">
+                <div class="empty-state text-center py-4">
+                    <p class="text-resonance-text-muted text-sm">No conversations yet</p>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Friends/DM Content Area -->
+        <main class="flex-1 flex flex-col bg-resonance-bg-primary min-w-0">
+            <!-- Friends Content (tabs) -->
+            <div id="friends-content" class="flex-1 flex flex-col">
+                <!-- Friends Header with Tabs -->
+                <header class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm gap-4">
+                    <span class="material-icons text-2xl text-resonance-text-muted">people</span>
+                    <span class="font-semibold text-white">Friends</span>
+                    <div class="h-6 w-px bg-resonance-bg-tertiary mx-2"></div>
+                    <nav class="flex items-center gap-1">
+                        <button class="friends-tab px-3 py-1 rounded text-sm font-medium text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary active" data-tab="all">All</button>
+                        <button class="friends-tab px-3 py-1 rounded text-sm font-medium text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary relative" data-tab="pending">
+                            Pending
+                            <span id="pending-tab-badge" class="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-resonance-danger rounded-full text-xs font-bold text-white flex items-center justify-center hidden">0</span>
+                        </button>
+                        <button class="friends-tab px-3 py-1 rounded bg-resonance-success/20 text-resonance-success text-sm font-medium hover:bg-resonance-success/30" data-tab="add">Add Friend</button>
+                    </nav>
+                </header>
+                
+                <!-- All Friends Panel -->
+                <div id="friends-all-panel" class="flex-1 overflow-y-auto p-4">
+                    <div id="friends-list">
+                        <div class="empty-state text-center py-8">
+                            <span class="material-icons text-4xl text-resonance-text-muted">person_off</span>
+                            <p class="text-resonance-text-muted mt-2">No friends yet</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pending Requests Panel -->
+                <div id="friends-pending-panel" class="flex-1 overflow-y-auto p-4 hidden">
+                    <div id="pending-requests-list">
+                        <div class="empty-state text-center py-8">
+                            <span class="material-icons text-4xl text-resonance-text-muted">mail_outline</span>
+                            <p class="text-resonance-text-muted mt-2">No pending requests</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Add Friend Panel -->
+                <div id="friends-add-panel" class="flex-1 p-4 hidden">
+                    <h2 class="text-xl font-bold text-white mb-2">Add Friend</h2>
+                    <p class="text-resonance-text-muted text-sm mb-4">You can add friends by their username.</p>
+                    <form id="add-friend-form" class="flex gap-3">
+                        <input type="text" id="add-friend-username" placeholder="Enter a username" 
+                               class="flex-1 px-4 py-2 bg-resonance-bg-tertiary rounded-lg text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                        <button type="submit" class="px-6 py-2 bg-resonance-brand hover:bg-resonance-brand-hover rounded-lg text-white font-medium transition-colors">
+                            Send Friend Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- DM Content (hidden until a conversation is opened) -->
+            <div id="dm-content" class="flex-1 flex flex-col hidden">
+                <!-- DM Header -->
+                <header id="dm-header" class="h-12 px-4 flex items-center justify-between border-b border-resonance-bg-tertiary shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-white" id="dm-header-name">Select a conversation</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="dm-btn-voice-call" class="p-2 rounded-lg hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white" title="Voice Call">
+                            <span class="material-icons">call</span>
+                        </button>
+                        <button id="dm-btn-video-call" class="p-2 rounded-lg hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white" title="Video Call">
+                            <span class="material-icons">videocam</span>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- DM Active Call Area (shown when in call) -->
+                <div id="dm-call-area" class="hidden bg-resonance-bg-tertiary border-b border-black/20" style="min-height: 200px;">
+                    <!-- Voice Members Display -->
+                    <div class="relative p-4 overflow-hidden flex items-center justify-center" style="height: calc(100% - 52px);">
+                        <div class="voice-grid" id="dm-voice-members-display" data-count="0">
+                            <!-- Voice members will be displayed here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Voice Controls Bar -->
+                    <div class="bg-resonance-bg-secondary/50 p-3">
+                        <div class="flex items-center justify-center gap-3">
+                            <!-- Mute Button -->
+                            <button class="voice-control-btn w-10 h-10 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="dm-voice-btn-mute" title="Mute">
+                                <span class="material-icons text-xl">mic</span>
+                            </button>
+                            
+                            <!-- Deafen Button -->
+                            <button class="voice-control-btn w-10 h-10 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="dm-voice-btn-deafen" title="Deafen">
+                                <span class="material-icons text-xl">headphones</span>
+                            </button>
+                            
+                            <!-- Camera Button -->
+                            <button class="voice-control-btn w-10 h-10 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="dm-voice-btn-camera" title="Toggle Camera">
+                                <span class="material-icons text-xl">videocam_off</span>
+                            </button>
+                            
+                            <!-- Screen Share Button -->
+                            <button class="voice-control-btn w-10 h-10 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="dm-voice-btn-screenshare" title="Share Screen">
+                                <span class="material-icons text-xl">screen_share</span>
+                            </button>
+                            
+                            <!-- Disconnect Button -->
+                            <button class="voice-control-btn w-10 h-10 rounded-full bg-resonance-danger hover:bg-red-600 flex items-center justify-center text-white transition-colors" id="dm-voice-btn-disconnect" title="Disconnect">
+                                <span class="material-icons text-xl">call_end</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resizable Divider -->
+                    <div id="dm-call-resizer" class="dm-call-resizer">
+                        <div class="dm-call-resizer-handle"></div>
+                    </div>
+                </div>
+
+                <!-- DM Messages -->
+                <div class="flex-1 overflow-y-auto p-4" id="dm-messages-container">
+                    <div id="dm-messages-list">
+                        <div class="empty-state text-center py-8">
+                            <span class="material-icons text-4xl text-resonance-text-muted">chat_bubble_outline</span>
+                            <p class="text-resonance-text-muted mt-2">Select a conversation to start messaging</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DM Typing Indicator -->
+                <div id="dm-typing-indicator" class="px-4 py-1 text-sm text-resonance-text-muted hidden"></div>
+                
+                <!-- DM Message Input -->
+                <form id="dm-message-form" class="p-4 border-t border-resonance-bg-tertiary">
+                    <div class="flex items-center gap-3 bg-resonance-bg-secondary rounded-lg px-4 py-2">
+                        <button type="button" class="text-resonance-text-muted hover:text-resonance-text-primary" id="dm-upload-btn">
+                            <span class="material-icons">add_circle</span>
+                        </button>
+                        <input type="text" id="dm-message-input" placeholder="Message" 
+                               class="flex-1 bg-transparent text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none">
+                        <button type="submit" class="text-resonance-text-muted hover:text-resonance-text-primary">
+                            <span class="material-icons">send</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div><!-- End friends-view -->
+
+<!-- Incoming Call Modal -->
+<div id="incoming-call-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+    <div class="bg-resonance-bg-secondary rounded-xl p-6 w-80 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-resonance-brand flex items-center justify-center animate-pulse">
+            <span class="material-icons text-4xl text-white">call</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-1" id="incoming-caller-name">Someone</h3>
+        <p class="text-resonance-text-muted mb-6" id="incoming-call-type">Voice Call</p>
+        <div class="flex justify-center gap-4">
+            <button id="decline-call-btn" class="w-14 h-14 rounded-full bg-resonance-danger hover:bg-red-600 flex items-center justify-center transition-colors">
+                <span class="material-icons text-2xl text-white">call_end</span>
+            </button>
+            <button id="accept-call-btn" class="w-14 h-14 rounded-full bg-resonance-success hover:bg-green-600 flex items-center justify-center transition-colors">
+                <span class="material-icons text-2xl text-white">call</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- User Card Popup -->
+<div class="user-card fixed w-80 bg-resonance-bg-tertiary rounded-lg shadow-2xl z-50 overflow-hidden hidden" id="user-card">
+    <div class="user-card-banner h-24 bg-gradient-to-r from-resonance-brand to-purple-500" id="user-card-banner"></div>
+    <div class="relative px-4 pb-4">
+        <div class="user-card-avatar -mt-12 w-20 h-20 rounded-full bg-resonance-brand border-4 border-resonance-bg-tertiary flex items-center justify-center text-2xl font-bold text-white" id="user-card-avatar"></div>
+        <div class="mt-8">
+            <h3 class="text-xl font-bold text-white" id="user-card-displayname"></h3>
+            <span class="text-sm text-resonance-text-secondary" id="user-card-username"></span>
+        </div>
+        <div class="h-px bg-resonance-bg-hover my-3"></div>
+        <div class="space-y-3">
+            <div>
+                <h4 class="text-xs font-bold text-resonance-text-secondary uppercase mb-1">About Me</h4>
+                <p class="text-sm text-resonance-text-primary" id="user-card-bio"></p>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-resonance-text-secondary uppercase mb-1">Roles</h4>
+                <div class="flex flex-wrap gap-1" id="user-card-roles"></div>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-resonance-text-secondary uppercase mb-1">Member Since</h4>
+                <span class="text-sm text-resonance-text-primary" id="user-card-joined"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Create Category -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-category">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white" id="modal-category-title">Create Category</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="form-category">
+            <input type="hidden" id="edit-category-id" value="">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Category Name</label>
+                <input type="text" id="category-name" placeholder="New Category" required
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+                <button type="button" class="btn-danger hidden px-4 py-2 bg-resonance-danger hover:bg-red-600 text-white text-sm font-medium rounded transition-colors" id="btn-delete-category">Delete</button>
+                <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Create/Edit Text Channel -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-text-channel">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white" id="modal-text-channel-title">Create Text Channel</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="form-text-channel">
+            <input type="hidden" id="edit-text-channel-id" value="">
+            <input type="hidden" id="text-channel-category-id" value="">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Channel Name</label>
+                <input type="text" id="text-channel-name" placeholder="new-channel" required
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Description (optional)</label>
+                <input type="text" id="text-channel-desc" placeholder="What's this channel about?"
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+                <button type="button" class="hidden px-4 py-2 bg-resonance-danger hover:bg-red-600 text-white text-sm font-medium rounded transition-colors" id="btn-delete-text-channel">Delete</button>
+                <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Create/Edit Voice Channel -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-voice-channel">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white" id="modal-voice-channel-title">Create Voice Channel</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="form-voice-channel">
+            <input type="hidden" id="edit-voice-channel-id" value="">
+            <input type="hidden" id="voice-channel-category-id" value="">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Channel Name</label>
+                <input type="text" id="voice-channel-name" placeholder="General Voice" required
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">User Limit (0 = unlimited)</label>
+                <input type="number" id="voice-channel-limit" value="0" min="0" max="99"
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+                <button type="button" class="hidden px-4 py-2 bg-resonance-danger hover:bg-red-600 text-white text-sm font-medium rounded transition-colors" id="btn-delete-voice-channel">Delete</button>
+                <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Upload Sound -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-upload-sound">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white">Upload Sound</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="form-upload-sound" enctype="multipart/form-data">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Sound Name</label>
+                <input type="text" id="sound-name" name="name" placeholder="My Sound" maxlength="100"
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Audio File</label>
+                <input type="file" id="sound-file" name="sound" accept=".mp3,.wav,.ogg" required
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-resonance-brand file:text-white file:cursor-pointer">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: User Settings -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-user-settings">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-4xl h-[600px] bg-resonance-bg-secondary rounded-lg shadow-xl flex overflow-hidden">
+        <!-- Settings Navigation -->
+        <nav class="w-52 bg-resonance-bg-tertiary p-4 flex flex-col">
+            <h3 class="text-xs font-bold text-resonance-text-muted uppercase px-2 mb-2">User Settings</h3>
+            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm transition-colors bg-resonance-bg-selected text-white" data-tab="profile">
+                <span class="material-icons text-lg align-middle mr-2">person</span>My Account
+            </button>
+            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="profiles">
+                <span class="material-icons text-lg align-middle mr-2">badge</span>Profile
+            </button>
+            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="voice">
+                <span class="material-icons text-lg align-middle mr-2">mic</span>Voice & Audio
+            </button>
+            <div class="h-px bg-resonance-bg-hover my-2"></div>
+            <a href="/logout" class="text-left px-2 py-1.5 rounded text-sm text-resonance-danger hover:bg-resonance-bg-hover transition-colors">
+                <span class="material-icons text-lg align-middle mr-2">logout</span>Log Out
+            </a>
+            <div class="mt-auto">
+                <button class="modal-close w-full p-2 rounded-full border-2 border-resonance-bg-hover text-resonance-text-muted hover:border-resonance-text-muted hover:text-resonance-text-primary transition-colors">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        </nav>
+        
+        <!-- Settings Content -->
+        <div class="flex-1 p-6 overflow-y-auto">
+            <!-- Account Tab -->
+            <div class="settings-tab" id="tab-profile">
+                <h2 class="text-xl font-bold text-white mb-6">My Account</h2>
+                
+                <!-- Profile Preview Card -->
+                <div class="bg-resonance-bg-tertiary rounded-lg overflow-hidden mb-6">
+                    <div class="h-24 bg-gradient-to-r from-resonance-brand to-purple-500" id="preview-banner" style="background-color: {{ userProfile.banner_color|default('#5865F2') }}">
+                        {% if userProfile and userProfile.banner %}
+                        <img src="{{ userProfile.banner }}" alt="Banner" class="w-full h-full object-cover">
+                        {% endif %}
+                    </div>
+                    <div class="relative px-4 pb-4">
+                        <div class="-mt-10 w-20 h-20 rounded-full bg-resonance-brand border-4 border-resonance-bg-tertiary flex items-center justify-center text-2xl font-bold text-white" id="preview-avatar">
+                            {% if userProfile and userProfile.avatar %}
+                            <img src="{{ userProfile.avatar }}" alt="Avatar" class="w-full h-full rounded-full object-cover">
+                            {% else %}
+                            {{ auth().username|slice(0,1)|upper }}
+                            {% endif %}
+                        </div>
+                        <div class="mt-2">
+                            <span class="text-xl font-bold text-white" id="preview-displayname">{{ userProfile.display_name|default(auth().username) }}</span>
+                            <span class="text-resonance-text-secondary ml-1">#{{ auth().username }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="form-user-account" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Username</label>
+                            <input type="text" id="settings-username" value="{{ auth().username }}" 
+                                   class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Email</label>
+                            <input type="email" id="settings-email" value="{{ auth().email }}"
+                                   class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-sm font-semibold text-resonance-text-primary pt-4">Password</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Current Password</label>
+                            <input type="password" id="settings-current-password" placeholder="••••••••"
+                                   class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">New Password</label>
+                            <input type="password" id="settings-new-password" placeholder="••••••••"
+                                   class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white font-medium rounded transition-colors">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Profile Tab -->
+            <div class="settings-tab hidden" id="tab-profiles">
+                <h2 class="text-xl font-bold text-white mb-6">Profile</h2>
+                
+                <form id="form-user-profile" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Display Name</label>
+                        <input type="text" id="settings-display-name" value="{{ userProfile.display_name|default(auth().username) }}"
+                               class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">About Me</label>
+                        <textarea id="settings-bio" rows="4" placeholder="Tell us about yourself..."
+                                  class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand resize-none">{{ userProfile.bio }}</textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Custom Status</label>
+                        <input type="text" id="settings-custom-status" value="{{ userProfile.custom_status }}" placeholder="What are you up to?"
+                               class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Status</label>
+                        <select id="settings-status" class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                            <option value="online" {% if userProfile and userProfile.status == 'online' %}selected{% endif %}>🟢 Online</option>
+                            <option value="idle" {% if userProfile and userProfile.status == 'idle' %}selected{% endif %}>🌙 Idle</option>
+                            <option value="dnd" {% if userProfile and userProfile.status == 'dnd' %}selected{% endif %}>⛔ Do Not Disturb</option>
+                            <option value="invisible" {% if userProfile and userProfile.status == 'invisible' %}selected{% endif %}>⚫ Invisible</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Avatar</label>
+                            <div class="flex items-center gap-3">
+                                <div class="w-16 h-16 rounded-full bg-resonance-brand flex items-center justify-center text-xl font-bold text-white overflow-hidden" id="avatar-preview">
+                                    {% if userProfile and userProfile.avatar %}
+                                    <img src="{{ userProfile.avatar }}" alt="Avatar" class="w-full h-full object-cover">
+                                    {% else %}
+                                    {{ auth().username|slice(0,1)|upper }}
+                                    {% endif %}
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <input type="file" id="avatar-input" accept="image/*" class="hidden">
+                                    <button type="button" id="btn-change-avatar" class="px-3 py-1 text-sm bg-resonance-brand hover:bg-resonance-brand-hover text-white rounded transition-colors">Change</button>
+                                    <button type="button" id="btn-remove-avatar" class="px-3 py-1 text-sm text-resonance-text-muted hover:text-resonance-danger transition-colors">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Banner Color</label>
+                            <div class="flex items-center gap-3">
+                                <div class="w-16 h-10 rounded bg-gradient-to-r from-resonance-brand to-purple-500" id="banner-preview" style="background-color: {{ userProfile.banner_color|default('#5865F2') }}"></div>
+                                <input type="color" id="settings-banner-color" value="{{ userProfile.banner_color|default('#5865F2') }}"
+                                       class="w-10 h-10 rounded cursor-pointer border-0 bg-transparent">
+                                <input type="file" id="banner-input" accept="image/*" class="hidden">
+                                <button type="button" id="btn-change-banner" class="px-3 py-1 text-sm bg-resonance-brand hover:bg-resonance-brand-hover text-white rounded transition-colors">Upload</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white font-medium rounded transition-colors">
+                            Save Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Voice Tab -->
+            <div class="settings-tab hidden" id="tab-voice">
+                <h2 class="text-xl font-bold text-white mb-6">Voice & Audio</h2>
+                
+                <form id="form-voice-settings" class="space-y-6">
+                    <div>
+                        <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Input Sensitivity</label>
+                        <input type="range" id="voice-sensitivity" min="0" max="100" value="{{ userProfile.voice_sensitivity|default(30) }}"
+                               class="w-full h-2 bg-resonance-bg-tertiary rounded-lg appearance-none cursor-pointer accent-resonance-brand">
+                        <div class="mt-2 h-2 bg-resonance-bg-tertiary rounded overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-resonance-success via-resonance-warning to-resonance-danger transition-all" id="voice-level-indicator" style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-resonance-text-muted mt-2">Adjust microphone sensitivity for voice activity detection. Speak to test!</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Input Device</label>
+                            <select id="input-device" class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Output Device</label>
+                            <select id="output-device" class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white font-medium rounded transition-colors">
+                            Save Voice Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Channel Type Selection -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-add-channel">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white">Create Channel</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <input type="hidden" id="add-channel-category-id" value="">
+        <div class="space-y-2">
+            <button class="channel-type-btn w-full flex items-center gap-4 p-4 bg-resonance-bg-secondary hover:bg-resonance-bg-hover rounded-lg transition-colors text-left" data-type="text" id="btn-select-text-channel">
+                <div class="w-10 h-10 rounded-full bg-resonance-bg-tertiary flex items-center justify-center">
+                    <span class="material-icons text-resonance-text-primary">tag</span>
+                </div>
+                <div>
+                    <span class="block font-medium text-white">Text Channel</span>
+                    <span class="text-sm text-resonance-text-muted">Send messages, images, and files</span>
+                </div>
+            </button>
+            <button class="channel-type-btn w-full flex items-center gap-4 p-4 bg-resonance-bg-secondary hover:bg-resonance-bg-hover rounded-lg transition-colors text-left" data-type="voice" id="btn-select-voice-channel">
+                <div class="w-10 h-10 rounded-full bg-resonance-bg-tertiary flex items-center justify-center">
+                    <span class="material-icons text-resonance-text-primary">volume_up</span>
+                </div>
+                <div>
+                    <span class="block font-medium text-white">Voice Channel</span>
+                    <span class="text-sm text-resonance-text-muted">Hang out with voice and soundboard</span>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Server Settings -->
+<div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-server-settings">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-4xl h-[600px] bg-resonance-bg-secondary rounded-lg shadow-xl flex overflow-hidden">
+        <!-- Settings Navigation -->
+        <nav class="w-52 bg-resonance-bg-tertiary p-4 flex flex-col">
+            <h3 class="text-xs font-bold text-resonance-text-muted uppercase px-2 mb-2">Server Settings</h3>
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm transition-colors bg-resonance-bg-selected text-white" data-tab="overview">
+                <span class="material-icons text-lg align-middle mr-2">info</span>Overview
+            </button>
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="roles">
+                <span class="material-icons text-lg align-middle mr-2">admin_panel_settings</span>Roles
+            </button>
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="members">
+                <span class="material-icons text-lg align-middle mr-2">group</span>Members
+            </button>
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="invites">
+                <span class="material-icons text-lg align-middle mr-2">link</span>Invite Codes
+            </button>
+            <div class="mt-auto">
+                <button class="modal-close w-full p-2 rounded-full border-2 border-resonance-bg-hover text-resonance-text-muted hover:border-resonance-text-muted hover:text-resonance-text-primary transition-colors">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        </nav>
+        
+        <!-- Settings Content -->
+        <div class="flex-1 p-6 overflow-y-auto">
+            <!-- Overview Tab -->
+            <div class="server-settings-tab" id="server-tab-overview">
+                <h2 class="text-xl font-bold text-white mb-6">Server Overview</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Server Name</label>
+                        <input type="text" id="server-name" value="{{ app_name }}" 
+                               class="w-full max-w-md px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                    </div>
+                    <p class="text-resonance-text-muted text-sm">Server name changes require application restart.</p>
+                </div>
+            </div>
+            
+            <!-- Roles Tab -->
+            <div class="server-settings-tab hidden" id="server-tab-roles">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">Roles</h2>
+                    <button id="btn-create-role" class="px-3 py-1.5 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors flex items-center gap-1">
+                        <span class="material-icons text-sm">add</span>
+                        Create Role
+                    </button>
+                </div>
+                <div class="space-y-2" id="roles-list">
+                    <!-- Roles will be loaded here -->
+                    <div class="text-resonance-text-muted text-sm">Loading roles...</div>
+                </div>
+            </div>
+            
+            <!-- Members Tab -->
+            <div class="server-settings-tab hidden" id="server-tab-members">
+                <h2 class="text-xl font-bold text-white mb-6">Server Members</h2>
+                <div class="mb-4">
+                    <input type="text" id="member-search" placeholder="Search members..." 
+                           class="w-full max-w-md px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                </div>
+                <div class="space-y-2" id="members-list">
+                    <!-- Members will be loaded here -->
+                    <div class="text-resonance-text-muted text-sm">Loading members...</div>
+                </div>
+            </div>
+            
+            <!-- Invites Tab -->
+            <div class="server-settings-tab hidden" id="server-tab-invites">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">Invite Codes</h2>
+                    <button id="btn-create-invite" class="px-3 py-1.5 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors flex items-center gap-1">
+                        <span class="material-icons text-sm">add</span>
+                        Create Invite
+                    </button>
+                </div>
+                <p class="text-resonance-text-muted text-sm mb-4">Invite codes are required for new users to register. Share these codes with people you want to invite.</p>
+                <div class="space-y-2" id="invites-list">
+                    <!-- Invite codes will be loaded here -->
+                    <div class="text-resonance-text-muted text-sm">Loading invite codes...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Create/Edit Role -->
+<div class="modal fixed inset-0 z-[60] hidden items-center justify-center" id="modal-role">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-lg bg-resonance-bg-primary rounded-lg p-4 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white" id="modal-role-title">Create Role</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="form-role">
+            <input type="hidden" id="edit-role-id" value="">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Role Name</label>
+                <input type="text" id="role-name" placeholder="Moderator" required maxlength="50"
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Color</label>
+                <div class="flex gap-2 items-center">
+                    <input type="color" id="role-color" value="#5865f2" 
+                           class="w-10 h-10 rounded cursor-pointer border-0">
+                    <input type="text" id="role-color-hex" value="#5865f2" maxlength="7"
+                           class="w-24 px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand font-mono text-sm">
+                </div>
+            </div>
+            
+            <!-- Permissions - Organized by Category -->
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-3">Permissions</label>
+                
+                <!-- General Permissions -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-icons text-sm text-resonance-text-muted">shield</span>
+                        <span class="text-xs font-semibold text-resonance-text-muted uppercase">General Server Permissions</span>
+                    </div>
+                    <div class="bg-resonance-bg-tertiary rounded p-3 space-y-3">
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Administrator</span>
+                                <p class="text-xs text-resonance-text-muted">Full access to all settings and permissions</p>
+                            </div>
+                            <input type="checkbox" id="perm-admin" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-danger focus:ring-resonance-danger">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Manage Channels</span>
+                                <p class="text-xs text-resonance-text-muted">Create, edit, and delete channels</p>
+                            </div>
+                            <input type="checkbox" id="perm-manage-channels" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Manage Roles</span>
+                                <p class="text-xs text-resonance-text-muted">Create, edit, and assign roles</p>
+                            </div>
+                            <input type="checkbox" id="perm-manage-roles" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Membership Permissions -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-icons text-sm text-resonance-text-muted">group</span>
+                        <span class="text-xs font-semibold text-resonance-text-muted uppercase">Membership</span>
+                    </div>
+                    <div class="bg-resonance-bg-tertiary rounded p-3 space-y-3">
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Kick Members</span>
+                                <p class="text-xs text-resonance-text-muted">Remove members from the server</p>
+                            </div>
+                            <input type="checkbox" id="perm-kick-members" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Ban Members</span>
+                                <p class="text-xs text-resonance-text-muted">Permanently ban members</p>
+                            </div>
+                            <input type="checkbox" id="perm-ban-members" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Text Channel Permissions -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-icons text-sm text-resonance-text-muted">chat</span>
+                        <span class="text-xs font-semibold text-resonance-text-muted uppercase">Text Channels</span>
+                    </div>
+                    <div class="bg-resonance-bg-tertiary rounded p-3 space-y-3">
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Send Messages</span>
+                                <p class="text-xs text-resonance-text-muted">Send messages in text channels</p>
+                            </div>
+                            <input type="checkbox" id="perm-send-messages" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Manage Messages</span>
+                                <p class="text-xs text-resonance-text-muted">Delete and pin messages from other members</p>
+                            </div>
+                            <input type="checkbox" id="perm-manage-messages" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Attach Files</span>
+                                <p class="text-xs text-resonance-text-muted">Upload files and images</p>
+                            </div>
+                            <input type="checkbox" id="perm-attach-files" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Mention @everyone</span>
+                                <p class="text-xs text-resonance-text-muted">Mention all members at once</p>
+                            </div>
+                            <input type="checkbox" id="perm-mention-everyone" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Voice Channel Permissions -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-icons text-sm text-resonance-text-muted">mic</span>
+                        <span class="text-xs font-semibold text-resonance-text-muted uppercase">Voice Channels</span>
+                    </div>
+                    <div class="bg-resonance-bg-tertiary rounded p-3 space-y-3">
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Connect</span>
+                                <p class="text-xs text-resonance-text-muted">Join voice channels</p>
+                            </div>
+                            <input type="checkbox" id="perm-use-voice" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Speak</span>
+                                <p class="text-xs text-resonance-text-muted">Talk in voice channels</p>
+                            </div>
+                            <input type="checkbox" id="perm-speak" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Mute Members</span>
+                                <p class="text-xs text-resonance-text-muted">Mute other members in voice</p>
+                            </div>
+                            <input type="checkbox" id="perm-mute-members" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Deafen Members</span>
+                                <p class="text-xs text-resonance-text-muted">Deafen other members in voice</p>
+                            </div>
+                            <input type="checkbox" id="perm-deafen-members" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Move Members</span>
+                                <p class="text-xs text-resonance-text-muted">Disconnect or move members between voice channels</p>
+                            </div>
+                            <input type="checkbox" id="perm-move-members" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer group">
+                            <div>
+                                <span class="text-sm text-resonance-text-primary">Manage Soundboard</span>
+                                <p class="text-xs text-resonance-text-muted">Upload and delete soundboard sounds</p>
+                            </div>
+                            <input type="checkbox" id="perm-manage-sounds" class="w-5 h-5 rounded bg-resonance-input border-resonance-bg-hover text-resonance-brand focus:ring-resonance-brand">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-2">
+                <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+                <button type="button" class="hidden px-4 py-2 bg-resonance-danger hover:bg-red-600 text-white text-sm font-medium rounded transition-colors" id="btn-delete-role">Delete</button>
+                <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Assign Role to Member -->
+<div class="modal fixed inset-0 z-[60] hidden items-center justify-center" id="modal-assign-role">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white">Manage Member Roles</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <input type="hidden" id="assign-role-user-id" value="">
+        <div class="mb-4">
+            <div class="flex items-center gap-3 mb-4 p-3 bg-resonance-bg-tertiary rounded">
+                <div class="w-10 h-10 bg-resonance-brand rounded-full flex items-center justify-center text-white font-semibold" id="assign-role-avatar">U</div>
+                <span class="text-white font-medium" id="assign-role-username">Username</span>
+            </div>
+            <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Roles</label>
+            <div class="space-y-2 bg-resonance-bg-tertiary rounded p-3 max-h-60 overflow-y-auto" id="assign-role-list">
+                <!-- Roles checkboxes will be loaded here -->
+            </div>
+        </div>
+        <div class="flex justify-end gap-2">
+            <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+            <button type="button" id="btn-save-member-roles" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Create Invite Code -->
+<div class="modal fixed inset-0 z-[60] hidden items-center justify-center" id="modal-invite">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white">Create Invite Code</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="form-invite">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Max Uses (optional)</label>
+                <input type="number" id="invite-max-uses" placeholder="Unlimited" min="1"
+                       class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                <p class="text-xs text-resonance-text-muted mt-1">Leave empty for unlimited uses</p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Expires After (hours, optional)</label>
+                <select id="invite-expires" 
+                        class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
+                    <option value="">Never expires</option>
+                    <option value="1">1 hour</option>
+                    <option value="6">6 hours</option>
+                    <option value="24">1 day</option>
+                    <option value="168">7 days</option>
+                    <option value="720">30 days</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-resonance-brand hover:bg-resonance-brand-hover text-white text-sm font-medium rounded transition-colors">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Delete User Confirmation -->
+<div class="modal fixed inset-0 z-[60] hidden items-center justify-center" id="modal-delete-user">
+    <div class="modal-overlay absolute inset-0 bg-black/80"></div>
+    <div class="modal-content relative w-full max-w-md bg-resonance-bg-primary rounded-lg p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-white">Delete User</h3>
+            <button class="modal-close p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <input type="hidden" id="delete-user-id" value="">
+        <p class="text-resonance-text-secondary mb-4">Are you sure you want to delete <span class="text-white font-semibold" id="delete-user-name">this user</span>? This action cannot be undone.</p>
+        <p class="text-resonance-text-muted text-sm mb-4">All messages, uploads, and other data associated with this user will be permanently deleted.</p>
+        <div class="flex justify-end gap-2">
+            <button type="button" class="modal-cancel px-4 py-2 text-sm text-resonance-text-primary hover:underline">Cancel</button>
+            <button type="button" id="btn-confirm-delete-user" class="px-4 py-2 bg-resonance-danger hover:bg-red-600 text-white text-sm font-medium rounded transition-colors">Delete User</button>
+        </div>
+    </div>
+</div>
+
+<!-- Pinned Messages Popup -->
+<div id="pinned-messages-popup" class="fixed top-14 right-48 w-96 max-h-96 bg-resonance-bg-secondary rounded-lg shadow-xl z-50 hidden overflow-hidden">
+    <div class="p-3 border-b border-resonance-bg-tertiary">
+        <h3 class="font-semibold text-white flex items-center gap-2">
+            <span class="material-icons text-resonance-text-muted">push_pin</span>
+            Pinned Messages
+        </h3>
+    </div>
+    <div class="overflow-y-auto max-h-80 p-2" id="pinned-messages-list">
+        <p class="text-resonance-text-muted text-sm text-center py-8">No pinned messages yet</p>
+    </div>
+</div>
+
+<!-- Search Results Popup -->
+<div id="search-results-popup" class="fixed top-14 right-4 w-96 max-h-96 bg-resonance-bg-secondary rounded-lg shadow-xl z-50 hidden overflow-hidden">
+    <div class="p-3 border-b border-resonance-bg-tertiary flex items-center justify-between">
+        <h3 class="font-semibold text-white flex items-center gap-2">
+            <span class="material-icons text-resonance-text-muted">search</span>
+            Search Results
+        </h3>
+        <button id="close-search-results" class="p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
+            <span class="material-icons text-sm">close</span>
+        </button>
+    </div>
+    <div class="overflow-y-auto max-h-80 p-2" id="search-results-list">
+        <p class="text-resonance-text-muted text-sm text-center py-8">Type to search messages...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ parent() }}
+<script>
+    // Permission names array (new relational system)
+    window.USER_PERMISSIONS = {{ permissions|default([])|json_encode|raw }};
+    
+    // Helper function to check permissions
+    window.hasPermission = function(permName) {
+        return window.USER_PERMISSIONS.includes(permName);
+    };
+    
+    // Common permission checks
+    window.APP_CONFIG.isAdmin = window.hasPermission('administrator');
+</script>
+<script src="{{ asset('js/websocket.js') }}"></script>
+<script src="{{ asset('js/webrtc.js') }}"></script>
+<script src="{{ asset('js/soundboard.js') }}"></script>
+<script src="{{ asset('js/friends.js') }}"></script>
+<script src="{{ asset('js/app.js') }}"></script>
+{% endblock %}
