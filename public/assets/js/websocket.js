@@ -24,7 +24,15 @@ class WebSocketManager {
     }
 
     connect() {
-        const wsUrl = `ws://${this.config.wsHost}:${this.config.wsPort}`;
+        // Automatically use wss:// for HTTPS, ws:// for HTTP
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        
+        // Production: Use subdomain ws.resonance.nasty.codes
+        // Development: Use localhost with port
+        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const wsUrl = isDevelopment 
+            ? `${protocol}://${this.config.wsHost}:${this.config.wsPort}`
+            : `${protocol}://ws.${this.config.wsHost}`;
         
         console.log(`Connecting to WebSocket: ${wsUrl}`);
 
