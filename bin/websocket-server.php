@@ -41,6 +41,12 @@ $server = IoServer::factory(
 $server->loop->addPeriodicTimer(60, function () use ($chatServer) {
     gc_collect_cycles();
     $chatServer->logMemoryUsage();
+    
+    // Keep database connection alive
+    if (!\App\Core\Database::ping()) {
+        echo "Database connection lost, reconnecting...\n";
+        \App\Core\Database::reconnect();
+    }
 });
 
 echo "Server running. Press Ctrl+C to stop.\n";
