@@ -243,6 +243,9 @@ class App {
     // ========================
     
     setupUIHandlers() {
+        // Mobile sidebar toggle
+        this.setupMobileSidebar();
+
         // Message form
         document.getElementById('message-form')?.addEventListener('submit', (e) => {
             this.handleSendMessage(e);
@@ -744,6 +747,11 @@ class App {
             
             // Switch to voice channel view
             this.showVoiceChannelView(channelName);
+
+            // Close mobile sidebar
+            if (window.innerWidth <= 1024) {
+                this.closeMobileSidebar();
+            }
             
         } catch (error) {
             console.error('Error joining voice channel:', error);
@@ -2930,6 +2938,63 @@ class App {
         if (container) {
             container.scrollTop = container.scrollHeight;
         }
+    }
+
+    // ========================
+    // Mobile Sidebar
+    // ========================
+
+    setupMobileSidebar() {
+        // Mobile menu button (server view)
+        document.getElementById('btn-mobile-menu')?.addEventListener('click', () => {
+            this.toggleMobileSidebar();
+        });
+
+        // Mobile menu button (friends/DM view)
+        document.getElementById('btn-mobile-dm-menu')?.addEventListener('click', () => {
+            this.toggleMobileSidebar();
+        });
+
+        // Close sidebar when clicking overlay
+        document.getElementById('mobile-overlay')?.addEventListener('click', () => {
+            this.closeMobileSidebar();
+        });
+
+        // Close sidebar on channel selection (mobile)
+        document.getElementById('channels-container')?.addEventListener('click', (e) => {
+            if (e.target.closest('.channel-item.text-channel') && window.innerWidth <= 1024) {
+                setTimeout(() => this.closeMobileSidebar(), 150);
+            }
+        });
+
+        // Close sidebar on DM conversation click (mobile)
+        document.getElementById('dm-conversations-list')?.addEventListener('click', (e) => {
+            if (e.target.closest('.dm-conversation-item') && window.innerWidth <= 1024) {
+                setTimeout(() => this.closeMobileSidebar(), 150);
+            }
+        });
+
+        // Handle resize: close mobile sidebar if window is resized above breakpoint
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1024) {
+                this.closeMobileSidebar();
+            }
+        });
+    }
+
+    toggleMobileSidebar() {
+        document.body.classList.toggle('mobile-sidebar-open');
+        const overlay = document.getElementById('mobile-overlay');
+        if (document.body.classList.contains('mobile-sidebar-open')) {
+            overlay?.classList.remove('hidden');
+        } else {
+            overlay?.classList.add('hidden');
+        }
+    }
+
+    closeMobileSidebar() {
+        document.body.classList.remove('mobile-sidebar-open');
+        document.getElementById('mobile-overlay')?.classList.add('hidden');
     }
 
     // ========================

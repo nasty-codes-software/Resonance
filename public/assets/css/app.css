@@ -72,12 +72,24 @@
 
 html, body {
     height: 100%;
+    height: 100dvh;
     font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     color: var(--text-primary);
     background-color: var(--bg-tertiary);
     -webkit-font-smoothing: antialiased;
+}
+
+/* Override Tailwind's h-screen (100vh) with dvh for mobile */
+body.h-screen {
+    height: 100vh;
+    height: 100dvh;
+}
+
+body.min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 a {
@@ -270,6 +282,7 @@ ul, ol {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    min-height: 100dvh;
     background: linear-gradient(135deg, var(--brand-primary) 0%, #4752c4 100%);
 }
 
@@ -312,6 +325,7 @@ ul, ol {
 /* ===== APP LAYOUT ===== */
 .app-page {
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
 }
 
@@ -964,19 +978,295 @@ input[type="range"]::-moz-range-thumb {
     }
 }
 
-@media (max-width: 768px) {
-    .channel-sidebar {
-        position: fixed;
-        left: var(--server-sidebar-width);
-        top: 0;
-        bottom: 0;
-        z-index: 100;
-        transform: translateX(-100%);
-        transition: transform var(--transition-normal);
+/* ========================
+   MOBILE RESPONSIVE STYLES
+   ======================== */
+
+/* Mobile/Tablet: <= 1024px - sidebars become off-canvas overlays */
+@media (max-width: 1024px) {
+    #members-sidebar {
+        display: none;
     }
-    
-    .channel-sidebar.open {
-        transform: translateX(0);
+
+    #pinned-messages-popup,
+    #search-results-popup {
+        right: 8px;
+        width: calc(100% - 16px);
+        max-width: 400px;
+    }
+
+    /* ---- Server sidebar ---- */
+    #server-sidebar {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        width: 72px !important;
+        z-index: 50 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.25s ease;
+    }
+    .mobile-sidebar-open #server-sidebar {
+        transform: translateX(0) !important;
+    }
+
+    /* ---- Channel sidebar ---- */
+    #channel-sidebar {
+        position: fixed !important;
+        left: 72px !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        width: 240px !important;
+        z-index: 50 !important;
+        transform: translateX(calc(-100% - 72px)) !important;
+        transition: transform 0.25s ease;
+    }
+    .mobile-sidebar-open #channel-sidebar {
+        transform: translateX(0) !important;
+    }
+
+    /* ---- Members sidebar ---- */
+    #members-sidebar {
+        display: none !important;
+    }
+
+    /* ---- Friends view DM sidebar ---- */
+    #dm-sidebar {
+        position: fixed !important;
+        left: 72px !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        width: 240px !important;
+        z-index: 50 !important;
+        transform: translateX(calc(-100% - 72px)) !important;
+        transition: transform 0.25s ease;
+    }
+    .mobile-sidebar-open #dm-sidebar {
+        transform: translateX(0) !important;
+    }
+
+    /* ---- Settings modals go full-screen ---- */
+    #modal-user-settings .modal-content,
+    #modal-server-settings .modal-content {
+        margin: 0;
+        border-radius: 0;
+        max-height: 100vh;
+        max-height: 100dvh;
+        height: 100%;
+    }
+}
+
+/* Mobile: <= 768px */
+@media (max-width: 768px) {
+
+    /* ---- Emoji picker ---- */
+    #emoji-picker {
+        right: 4px !important;
+        left: 4px !important;
+        bottom: 70px !important;
+        width: auto !important;
+    }
+
+    /* ---- Voice grid adjustments ---- */
+    .voice-grid[data-count="2"] .voice-member-card {
+        width: calc(100% - 16px);
+        height: calc(50% - 8px);
+    }
+    .voice-grid[data-count="3"] .voice-member-card,
+    .voice-grid[data-count="4"] .voice-member-card {
+        width: calc(50% - 6px);
+        height: calc(50% - 6px);
+    }
+    .voice-grid[data-count="5"] .voice-member-card,
+    .voice-grid[data-count="6"] .voice-member-card {
+        width: calc(50% - 6px);
+        height: calc(33.333% - 6px);
+    }
+
+    /* ---- Voice member avatars smaller ---- */
+    .voice-member-card .avatar-img,
+    .voice-member-card .avatar-placeholder {
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+    }
+    .voice-grid[data-count="1"] .avatar-img,
+    .voice-grid[data-count="1"] .avatar-placeholder {
+        width: 96px;
+        height: 96px;
+        font-size: 40px;
+    }
+    .voice-grid[data-count="2"] .avatar-img,
+    .voice-grid[data-count="2"] .avatar-placeholder {
+        width: 80px;
+        height: 80px;
+        font-size: 32px;
+    }
+
+    /* ---- Voice fullscreen hides everything ---- */
+    .voice-fullscreen-active #server-sidebar {
+        display: none !important;
+        transform: translateX(-100%) !important;
+    }
+
+    /* ---- Modal adjustments ---- */
+    .modal-content {
+        max-width: 100% !important;
+        margin: 8px;
+        border-radius: 12px;
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+        overflow-y: auto;
+    }
+
+    /* Role modal scrollable */
+    #modal-role .modal-content {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+
+    /* ---- User card popup ---- */
+    .user-card,
+    #user-card {
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: 60px !important;
+        transform: translateX(-50%) !important;
+        max-width: calc(100vw - 32px);
+    }
+
+    /* ---- Incoming call modal ---- */
+    #incoming-call-modal > div {
+        width: calc(100% - 32px);
+        max-width: 320px;
+    }
+
+    /* ---- Message input area ---- */
+    #message-input-container {
+        padding-left: 8px;
+        padding-right: 8px;
+        padding-bottom: 12px;
+    }
+
+    /* ---- Hide channel description on mobile ---- */
+    #channel-description {
+        display: none !important;
+    }
+
+    /* ---- DM message form ---- */
+    #dm-message-form {
+        padding: 8px;
+    }
+    #dm-message-form .gap-3 {
+        gap: 8px;
+        padding: 6px 8px;
+    }
+
+    /* ---- Context menu position ---- */
+    .voice-context-menu {
+        position: fixed;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        right: auto !important;
+        bottom: auto !important;
+    }
+}
+
+/* Small mobile: <= 480px */
+@media (max-width: 480px) {
+    /* Smaller message text */
+    .message-text {
+        font-size: 14px;
+    }
+
+    /* Stack friend request buttons */
+    #add-friend-form {
+        flex-direction: column;
+    }
+
+    /* Soundboard buttons smaller */
+    .sound-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    /* Voice grid single column for many participants */
+    .voice-grid[data-count="5"] .voice-member-card,
+    .voice-grid[data-count="6"] .voice-member-card,
+    .voice-grid[data-count="7"] .voice-member-card,
+    .voice-grid[data-count="8"] .voice-member-card,
+    .voice-grid[data-count="9"] .voice-member-card {
+        width: calc(50% - 4px);
+        height: calc(33.333% - 4px);
+    }
+
+    /* Auth pages padding */
+    .auth-card {
+        padding: var(--spacing-md);
+    }
+}
+
+/* Touch device improvements */
+@media (hover: none) and (pointer: coarse) {
+    /* Show action buttons always on touch (no hover) */
+    .message-actions {
+        display: flex !important;
+        opacity: 0.7;
+    }
+
+    /* Larger touch targets */
+    .channel-item {
+        padding: 8px var(--spacing-sm);
+    }
+
+    .voice-channel-header {
+        padding: 8px var(--spacing-sm);
+    }
+
+    .member-item {
+        padding: 8px var(--spacing-sm);
+    }
+
+    /* Show channel actions on touch */
+    .channel-item .channel-actions,
+    .voice-channel-header .channel-actions,
+    .category-actions {
+        opacity: 1;
+    }
+
+    /* Prevent text selection on interactive elements */
+    .channel-item,
+    .voice-channel-header,
+    .server-icon,
+    .btn-icon,
+    .voice-control-btn {
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+    }
+
+    /* Disable hover-only interactions for context menu */
+    .voice-member-card .btn-spotlight {
+        opacity: 0.7;
+    }
+    .voice-member-card .stream-badge {
+        opacity: 1 !important;
+    }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+    @media (max-width: 768px) {
+        #message-input-container,
+        #dm-message-form,
+        .user-panel {
+            padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        }
+
+        .voice-connection-panel {
+            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+        }
     }
 }
 
@@ -1951,13 +2241,11 @@ textarea.form-control {
 }
 
 /* When voice fullscreen is active, hide sidebars and header */
-.voice-fullscreen-active .w-\\[72px\\],
-.voice-fullscreen-active > aside:first-child {
+.voice-fullscreen-active #server-sidebar {
     display: none !important;
 }
 
-.voice-fullscreen-active .w-60,
-.voice-fullscreen-active > aside:nth-child(2) {
+.voice-fullscreen-active #channel-sidebar {
     display: none !important;
 }
 

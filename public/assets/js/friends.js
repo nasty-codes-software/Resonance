@@ -1950,6 +1950,10 @@ class FriendsManager {
     // ========================
 
     showFriendsPanel() {
+        // Close mobile sidebar
+        if (window.innerWidth <= 1024 && window.app) {
+            window.app.closeMobileSidebar();
+        }
         // Hide server view
         document.getElementById('server-view')?.classList.add('hidden');
         // Show friends view
@@ -1985,6 +1989,10 @@ class FriendsManager {
     }
 
     hideFriendsPanel() {
+        // Close mobile sidebar
+        if (window.innerWidth <= 1024 && window.app) {
+            window.app.closeMobileSidebar();
+        }
         // Show server view
         document.getElementById('server-view')?.classList.remove('hidden');
         // Hide friends view
@@ -1998,6 +2006,10 @@ class FriendsManager {
     }
 
     showDmView(friendId) {
+        // Close mobile sidebar when opening a DM
+        if (window.innerWidth <= 1024 && window.app) {
+            window.app.closeMobileSidebar();
+        }
         const friend = this.friends.find(f => f.friend_id == friendId || f.id == friendId);
         
         // Update DM header name

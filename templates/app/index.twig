@@ -4,9 +4,12 @@
 {% block body_class %}h-screen overflow-hidden{% endblock %}
 
 {% block content %}
+<!-- Mobile Sidebar Overlay -->
+<div id="mobile-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden" onclick="window.app?.closeMobileSidebar()"></div>
+
 <div class="flex h-full">
     <!-- Server Sidebar -->
-    <aside class="w-[72px] bg-resonance-bg-tertiary flex flex-col items-center py-3">
+    <aside id="server-sidebar" class="w-[72px] bg-resonance-bg-tertiary flex flex-col items-center py-3">
         <!-- Logo at top (click to go back to server) -->
         <button id="btn-home" class="server-icon w-12 h-12 bg-resonance-brand rounded-2xl hover:rounded-xl flex items-center justify-center font-bold text-white cursor-pointer transition-all duration-200" title="{{ app_name }}">
             <span class="material-icons">hub</span>
@@ -36,7 +39,7 @@
     <div id="server-view" class="flex-1 flex min-w-0">
     
     <!-- Channel Sidebar -->
-    <aside class="w-60 bg-resonance-bg-secondary flex flex-col">
+    <aside id="channel-sidebar" class="w-60 bg-resonance-bg-secondary flex flex-col">
         <!-- Server Header -->
         <div class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm">
             <h2 class="font-semibold text-white truncate">{{ app_name }}</h2>
@@ -216,7 +219,11 @@
     <main class="flex-1 flex flex-col bg-resonance-bg-primary min-w-0">
         <!-- Channel Header -->
         <header class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm gap-2" id="channel-header">
-            <span class="material-icons text-2xl text-resonance-text-muted" id="channel-header-icon">tag</span>
+            <!-- Mobile Menu Button -->
+            <button id="btn-mobile-menu" class="lg:hidden p-1 -ml-1 mr-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white flex-shrink-0" title="Menu">
+                <span class="material-icons">menu</span>
+            </button>
+            <span class="material-icons text-2xl text-resonance-text-muted hidden sm:inline" id="channel-header-icon">tag</span>
             <span class="font-semibold text-white" id="current-channel-name">
                 {{ activeChannel ? activeChannel.name : 'Select a channel' }}
             </span>
@@ -229,10 +236,10 @@
                 <button class="p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-pinned-messages" title="Pinned Messages">
                     <span class="material-icons">push_pin</span>
                 </button>
-                <button class="p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-resonance-text-primary transition-colors" id="btn-toggle-members" title="Show/Hide Members">
+                <button class="p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-resonance-text-primary transition-colors hidden sm:flex" id="btn-toggle-members" title="Show/Hide Members">
                     <span class="material-icons">people</span>
                 </button>
-                <div class="relative ml-2">
+                <div class="relative ml-2 hidden sm:block">
                     <input type="text" id="channel-search-input" placeholder="Search" 
                            class="w-36 px-3 py-1 text-sm bg-resonance-bg-tertiary rounded text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:w-56 transition-all">
                     <span class="material-icons absolute right-2 top-1/2 -translate-y-1/2 text-base text-resonance-text-muted pointer-events-none">search</span>
@@ -252,12 +259,12 @@
                     {% set canEdit = isOwnMessage %}
                     {% set canDelete = isOwnMessage or canManageMessages or isAdmin %}
                     {% set canPin = canManageMessages or isAdmin %}
-                    <div class="message flex gap-4 p-4 hover:bg-resonance-bg-secondary rounded transition-colors group relative" data-message-id="{{ message.id }}" data-user-id="{{ message.user_id }}">
-                        <div class="message-avatar">
+                    <div class="message flex gap-2 sm:gap-4 p-2 sm:p-4 hover:bg-resonance-bg-secondary rounded transition-colors group relative" data-message-id="{{ message.id }}" data-user-id="{{ message.user_id }}">
+                        <div class="message-avatar flex-shrink-0">
                             {% if message.avatar %}
-                            <img src="{{ message.avatar }}" class="w-10 h-10 rounded-full object-cover cursor-pointer user-clickable" data-user-id="{{ message.user_id }}" alt="">
+                            <img src="{{ message.avatar }}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer user-clickable" data-user-id="{{ message.user_id }}" alt="">
                             {% else %}
-                            <div class="w-10 h-10 rounded-full bg-resonance-brand flex items-center justify-center text-white font-semibold cursor-pointer user-clickable" data-user-id="{{ message.user_id }}">{{ message.username|slice(0,1)|upper }}</div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-resonance-brand flex items-center justify-center text-white font-semibold cursor-pointer user-clickable" data-user-id="{{ message.user_id }}">{{ message.username|slice(0,1)|upper }}</div>
                             {% endif %}
                         </div>
                         <div class="message-content flex-1 min-w-0">
@@ -272,7 +279,7 @@
                             <div class="message-attachment mt-2">
                                 {% if message.attachment_type == 'image' %}
                                 <a href="{{ message.attachment_url }}" target="_blank" class="block">
-                                    <img src="{{ message.attachment_url }}" alt="{{ message.attachment_name|default('Image') }}" class="max-w-md max-h-80 rounded-lg border border-resonance-bg-tertiary hover:border-resonance-brand transition-colors cursor-pointer">
+                                    <img src="{{ message.attachment_url }}" alt="{{ message.attachment_name|default('Image') }}" class="max-w-full sm:max-w-md max-h-60 sm:max-h-80 rounded-lg border border-resonance-bg-tertiary hover:border-resonance-brand transition-colors cursor-pointer">
                                 </a>
                                 {% else %}
                                 <a href="{{ message.attachment_url }}" download="{{ message.attachment_name|default('file') }}" class="inline-flex items-center gap-2 px-3 py-2 bg-resonance-bg-tertiary rounded-lg border border-resonance-bg-modifier hover:bg-resonance-bg-modifier transition-colors">
@@ -387,36 +394,36 @@
             </div>
             
             <!-- Voice Controls Bar -->
-            <div class="bg-resonance-bg-tertiary border-t border-black/20 p-4">
-                <div class="flex items-center justify-center gap-4">
+            <div class="bg-resonance-bg-tertiary border-t border-black/20 p-2 sm:p-4">
+                <div class="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <!-- Mute Button -->
-                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-mute" title="Mute">
-                        <span class="material-icons text-2xl">mic</span>
+                    <button class="voice-control-btn w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-mute" title="Mute">
+                        <span class="material-icons text-xl sm:text-2xl">mic</span>
                     </button>
                     
                     <!-- Deafen Button -->
-                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-deafen" title="Deafen">
-                        <span class="material-icons text-2xl">headphones</span>
+                    <button class="voice-control-btn w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-deafen" title="Deafen">
+                        <span class="material-icons text-xl sm:text-2xl">headphones</span>
                     </button>
                     
                     <!-- Camera Button -->
-                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-camera" title="Toggle Camera">
-                        <span class="material-icons text-2xl">videocam_off</span>
+                    <button class="voice-control-btn w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-camera" title="Toggle Camera">
+                        <span class="material-icons text-xl sm:text-2xl">videocam_off</span>
                     </button>
                     
                     <!-- Screen Share Button -->
-                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-screenshare" title="Share Screen">
-                        <span class="material-icons text-2xl">screen_share</span>
+                    <button class="voice-control-btn w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-screenshare" title="Share Screen">
+                        <span class="material-icons text-xl sm:text-2xl">screen_share</span>
                     </button>
                     
                     <!-- Soundboard Toggle -->
-                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-soundboard" title="Soundboard">
-                        <span class="material-icons text-2xl">music_note</span>
+                    <button class="voice-control-btn w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-resonance-bg-secondary hover:bg-resonance-bg-hover flex items-center justify-center text-resonance-text-primary transition-colors" id="voice-btn-soundboard" title="Soundboard">
+                        <span class="material-icons text-xl sm:text-2xl">music_note</span>
                     </button>
                     
                     <!-- Disconnect Button -->
-                    <button class="voice-control-btn w-14 h-14 rounded-full bg-resonance-danger hover:bg-red-600 flex items-center justify-center text-white transition-colors" id="voice-btn-disconnect" title="Disconnect">
-                        <span class="material-icons text-2xl">call_end</span>
+                    <button class="voice-control-btn w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-resonance-danger hover:bg-red-600 flex items-center justify-center text-white transition-colors" id="voice-btn-disconnect" title="Disconnect">
+                        <span class="material-icons text-xl sm:text-2xl">call_end</span>
                     </button>
                 </div>
                 
@@ -547,7 +554,7 @@
     <!-- Friends View (Hidden by default) -->
     <div id="friends-view" class="flex-1 flex min-w-0 hidden">
         <!-- DM Conversations Sidebar -->
-        <aside class="w-60 bg-resonance-bg-secondary flex flex-col">
+        <aside id="dm-sidebar" class="w-60 bg-resonance-bg-secondary flex flex-col">
             <!-- Friends Header -->
             <div class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm">
                 <button id="btn-back-to-server" class="p-1 -ml-1 mr-2 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white">
@@ -578,17 +585,21 @@
             <!-- Friends Content (tabs) -->
             <div id="friends-content" class="flex-1 flex flex-col">
                 <!-- Friends Header with Tabs -->
-                <header class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm gap-4">
-                    <span class="material-icons text-2xl text-resonance-text-muted">people</span>
+                <header class="h-12 px-4 flex items-center border-b border-resonance-bg-tertiary shadow-sm gap-2 sm:gap-4">
+                    <!-- Mobile Menu for Friends View -->
+                    <button id="btn-mobile-dm-menu" class="lg:hidden p-1 -ml-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white flex-shrink-0" title="Menu">
+                        <span class="material-icons">menu</span>
+                    </button>
+                    <span class="material-icons text-2xl text-resonance-text-muted hidden sm:inline">people</span>
                     <span class="font-semibold text-white">Friends</span>
                     <div class="h-6 w-px bg-resonance-bg-tertiary mx-2"></div>
-                    <nav class="flex items-center gap-1">
-                        <button class="friends-tab px-3 py-1 rounded text-sm font-medium text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary active" data-tab="all">All</button>
-                        <button class="friends-tab px-3 py-1 rounded text-sm font-medium text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary relative" data-tab="pending">
+                    <nav class="flex items-center gap-1 overflow-x-auto">
+                        <button class="friends-tab px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary active whitespace-nowrap" data-tab="all">All</button>
+                        <button class="friends-tab px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium text-resonance-text-muted hover:bg-resonance-bg-hover hover:text-resonance-text-primary relative whitespace-nowrap" data-tab="pending">
                             Pending
                             <span id="pending-tab-badge" class="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-resonance-danger rounded-full text-xs font-bold text-white flex items-center justify-center hidden">0</span>
                         </button>
-                        <button class="friends-tab px-3 py-1 rounded bg-resonance-success/20 text-resonance-success text-sm font-medium hover:bg-resonance-success/30" data-tab="add">Add Friend</button>
+                        <button class="friends-tab px-2 sm:px-3 py-1 rounded bg-resonance-success/20 text-resonance-success text-xs sm:text-sm font-medium hover:bg-resonance-success/30 whitespace-nowrap" data-tab="add">Add Friend</button>
                     </nav>
                 </header>
                 
@@ -616,10 +627,10 @@
                 <div id="friends-add-panel" class="flex-1 p-4 hidden">
                     <h2 class="text-xl font-bold text-white mb-2">Add Friend</h2>
                     <p class="text-resonance-text-muted text-sm mb-4">You can add friends by their username.</p>
-                    <form id="add-friend-form" class="flex gap-3">
+                    <form id="add-friend-form" class="flex flex-col sm:flex-row gap-3">
                         <input type="text" id="add-friend-username" placeholder="Enter a username" 
                                class="flex-1 px-4 py-2 bg-resonance-bg-tertiary rounded-lg text-resonance-text-primary placeholder-resonance-text-muted focus:outline-none focus:ring-2 focus:ring-resonance-brand">
-                        <button type="submit" class="px-6 py-2 bg-resonance-brand hover:bg-resonance-brand-hover rounded-lg text-white font-medium transition-colors">
+                        <button type="submit" class="px-6 py-2 bg-resonance-brand hover:bg-resonance-brand-hover rounded-lg text-white font-medium transition-colors whitespace-nowrap">
                             Send Friend Request
                         </button>
                     </form>
@@ -629,15 +640,18 @@
             <!-- DM Content (hidden until a conversation is opened) -->
             <div id="dm-content" class="flex-1 flex flex-col hidden">
                 <!-- DM Header -->
-                <header id="dm-header" class="h-12 px-4 flex items-center justify-between border-b border-resonance-bg-tertiary shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <span class="font-semibold text-white" id="dm-header-name">Select a conversation</span>
+                <header id="dm-header" class="h-12 px-2 sm:px-4 flex items-center justify-between border-b border-resonance-bg-tertiary shadow-sm">
+                    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <button class="lg:hidden p-1 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white flex-shrink-0" onclick="window.app?.toggleMobileSidebar()" title="Menu">
+                            <span class="material-icons text-xl">menu</span>
+                        </button>
+                        <span class="font-semibold text-white truncate" id="dm-header-name">Select a conversation</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button id="dm-btn-voice-call" class="p-2 rounded-lg hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white" title="Voice Call">
+                    <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                        <button id="dm-btn-voice-call" class="p-1.5 sm:p-2 rounded-lg hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white" title="Voice Call">
                             <span class="material-icons">call</span>
                         </button>
-                        <button id="dm-btn-video-call" class="p-2 rounded-lg hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white" title="Video Call">
+                        <button id="dm-btn-video-call" class="p-1.5 sm:p-2 rounded-lg hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white" title="Video Call">
                             <span class="material-icons">videocam</span>
                         </button>
                     </div>
@@ -738,7 +752,7 @@
 </div>
 
 <!-- User Card Popup -->
-<div class="user-card fixed w-80 bg-resonance-bg-tertiary rounded-lg shadow-2xl z-50 overflow-hidden hidden" id="user-card">
+<div class="user-card fixed w-72 sm:w-80 bg-resonance-bg-tertiary rounded-lg shadow-2xl z-50 overflow-hidden hidden" id="user-card">
     <div class="user-card-banner h-24 bg-gradient-to-r from-resonance-brand to-purple-500" id="user-card-banner"></div>
     <div class="relative px-4 pb-4">
         <div class="user-card-avatar -mt-12 w-20 h-20 rounded-full bg-resonance-brand border-4 border-resonance-bg-tertiary flex items-center justify-center text-2xl font-bold text-white" id="user-card-avatar"></div>
@@ -886,32 +900,36 @@
 <!-- Modal: User Settings -->
 <div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-user-settings">
     <div class="modal-overlay absolute inset-0 bg-black/80"></div>
-    <div class="modal-content relative w-full max-w-4xl h-[600px] bg-resonance-bg-secondary rounded-lg shadow-xl flex overflow-hidden">
+    <div class="modal-content relative w-full max-w-4xl h-full sm:h-[600px] bg-resonance-bg-secondary sm:rounded-lg shadow-xl flex flex-col sm:flex-row overflow-hidden">
         <!-- Settings Navigation -->
-        <nav class="w-52 bg-resonance-bg-tertiary p-4 flex flex-col">
-            <h3 class="text-xs font-bold text-resonance-text-muted uppercase px-2 mb-2">User Settings</h3>
-            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm transition-colors bg-resonance-bg-selected text-white" data-tab="profile">
-                <span class="material-icons text-lg align-middle mr-2">person</span>My Account
+        <nav class="w-full sm:w-52 bg-resonance-bg-tertiary p-3 sm:p-4 flex sm:flex-col overflow-x-auto sm:overflow-x-visible gap-1 sm:gap-0 flex-shrink-0">
+            <h3 class="hidden sm:block text-xs font-bold text-resonance-text-muted uppercase px-2 mb-2">User Settings</h3>
+            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm transition-colors bg-resonance-bg-selected text-white whitespace-nowrap" data-tab="profile">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">person</span><span class="hidden sm:inline">My Account</span><span class="sm:hidden">Account</span>
             </button>
-            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="profiles">
-                <span class="material-icons text-lg align-middle mr-2">badge</span>Profile
+            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors whitespace-nowrap" data-tab="profiles">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">badge</span>Profile
             </button>
-            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="voice">
-                <span class="material-icons text-lg align-middle mr-2">mic</span>Voice & Audio
+            <button class="settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors whitespace-nowrap" data-tab="voice">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">mic</span><span class="hidden sm:inline">Voice & Audio</span><span class="sm:hidden">Voice</span>
             </button>
-            <div class="h-px bg-resonance-bg-hover my-2"></div>
-            <a href="/logout" class="text-left px-2 py-1.5 rounded text-sm text-resonance-danger hover:bg-resonance-bg-hover transition-colors">
-                <span class="material-icons text-lg align-middle mr-2">logout</span>Log Out
+            <div class="hidden sm:block h-px bg-resonance-bg-hover my-2"></div>
+            <a href="/logout" class="text-left px-2 py-1.5 rounded text-sm text-resonance-danger hover:bg-resonance-bg-hover transition-colors whitespace-nowrap">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">logout</span>Log Out
             </a>
-            <div class="mt-auto">
+            <div class="hidden sm:block mt-auto">
                 <button class="modal-close w-full p-2 rounded-full border-2 border-resonance-bg-hover text-resonance-text-muted hover:border-resonance-text-muted hover:text-resonance-text-primary transition-colors">
                     <span class="material-icons">close</span>
                 </button>
             </div>
+            <!-- Mobile close button -->
+            <button class="sm:hidden modal-close ml-auto p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white flex-shrink-0">
+                <span class="material-icons">close</span>
+            </button>
         </nav>
         
         <!-- Settings Content -->
-        <div class="flex-1 p-6 overflow-y-auto">
+        <div class="flex-1 p-4 sm:p-6 overflow-y-auto">
             <!-- Account Tab -->
             <div class="settings-tab" id="tab-profile">
                 <h2 class="text-xl font-bold text-white mb-6">My Account</h2>
@@ -939,7 +957,7 @@
                 </div>
                 
                 <form id="form-user-account" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Username</label>
                             <input type="text" id="settings-username" value="{{ auth().username }}" 
@@ -953,7 +971,7 @@
                     </div>
                     
                     <h3 class="text-sm font-semibold text-resonance-text-primary pt-4">Password</h3>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Current Password</label>
                             <input type="password" id="settings-current-password" placeholder="••••••••"
@@ -1007,7 +1025,7 @@
                         </select>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Avatar</label>
                             <div class="flex items-center gap-3">
@@ -1047,7 +1065,7 @@
             
             <!-- Voice Tab -->
             <div class="settings-tab hidden" id="tab-voice">
-                <h2 class="text-xl font-bold text-white mb-6">Voice & Audio</h2>
+                <h2 class="text-xl font-bold text-white mb-6">Voice &amp; Audio</h2>
                 
                 <form id="form-voice-settings" class="space-y-6">
                     <div>
@@ -1060,7 +1078,7 @@
                         <p class="text-xs text-resonance-text-muted mt-2">Adjust microphone sensitivity for voice activity detection. Speak to test!</p>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-resonance-text-secondary uppercase mb-2">Input Device</label>
                             <select id="input-device" class="w-full px-3 py-2 bg-resonance-input rounded text-resonance-text-primary focus:outline-none focus:ring-2 focus:ring-resonance-brand">
@@ -1123,31 +1141,34 @@
 <!-- Modal: Server Settings -->
 <div class="modal fixed inset-0 z-50 hidden items-center justify-center" id="modal-server-settings">
     <div class="modal-overlay absolute inset-0 bg-black/80"></div>
-    <div class="modal-content relative w-full max-w-4xl h-[600px] bg-resonance-bg-secondary rounded-lg shadow-xl flex overflow-hidden">
+    <div class="modal-content relative w-full max-w-4xl h-full sm:h-[600px] bg-resonance-bg-secondary sm:rounded-lg shadow-xl flex flex-col sm:flex-row overflow-hidden">
         <!-- Settings Navigation -->
-        <nav class="w-52 bg-resonance-bg-tertiary p-4 flex flex-col">
-            <h3 class="text-xs font-bold text-resonance-text-muted uppercase px-2 mb-2">Server Settings</h3>
-            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm transition-colors bg-resonance-bg-selected text-white" data-tab="overview">
-                <span class="material-icons text-lg align-middle mr-2">info</span>Overview
+        <nav class="w-full sm:w-52 bg-resonance-bg-tertiary p-3 sm:p-4 flex sm:flex-col overflow-x-auto sm:overflow-x-visible gap-1 sm:gap-0 flex-shrink-0">
+            <h3 class="hidden sm:block text-xs font-bold text-resonance-text-muted uppercase px-2 mb-2">Server Settings</h3>
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm transition-colors bg-resonance-bg-selected text-white whitespace-nowrap" data-tab="overview">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">info</span>Overview
             </button>
-            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="roles">
-                <span class="material-icons text-lg align-middle mr-2">admin_panel_settings</span>Roles
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors whitespace-nowrap" data-tab="roles">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">admin_panel_settings</span>Roles
             </button>
-            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="members">
-                <span class="material-icons text-lg align-middle mr-2">group</span>Members
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors whitespace-nowrap" data-tab="members">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">group</span>Members
             </button>
-            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors" data-tab="invites">
-                <span class="material-icons text-lg align-middle mr-2">link</span>Invite Codes
+            <button class="server-settings-nav-item text-left px-2 py-1.5 rounded text-sm text-resonance-text-secondary hover:bg-resonance-bg-hover hover:text-resonance-text-primary transition-colors whitespace-nowrap" data-tab="invites">
+                <span class="material-icons text-lg align-middle mr-1 sm:mr-2">link</span>Invites
             </button>
-            <div class="mt-auto">
+            <div class="hidden sm:block mt-auto">
                 <button class="modal-close w-full p-2 rounded-full border-2 border-resonance-bg-hover text-resonance-text-muted hover:border-resonance-text-muted hover:text-resonance-text-primary transition-colors">
                     <span class="material-icons">close</span>
                 </button>
             </div>
+            <button class="sm:hidden modal-close ml-auto p-1.5 rounded hover:bg-resonance-bg-hover text-resonance-text-muted hover:text-white flex-shrink-0">
+                <span class="material-icons">close</span>
+            </button>
         </nav>
         
         <!-- Settings Content -->
-        <div class="flex-1 p-6 overflow-y-auto">
+        <div class="flex-1 p-4 sm:p-6 overflow-y-auto">
             <!-- Overview Tab -->
             <div class="server-settings-tab" id="server-tab-overview">
                 <h2 class="text-xl font-bold text-white mb-6">Server Overview</h2>
@@ -1480,7 +1501,7 @@
 </div>
 
 <!-- Pinned Messages Popup -->
-<div id="pinned-messages-popup" class="fixed top-14 right-48 w-96 max-h-96 bg-resonance-bg-secondary rounded-lg shadow-xl z-50 hidden overflow-hidden">
+<div id="pinned-messages-popup" class="fixed top-14 right-2 sm:right-48 w-[calc(100%-16px)] sm:w-96 max-h-96 bg-resonance-bg-secondary rounded-lg shadow-xl z-50 hidden overflow-hidden">
     <div class="p-3 border-b border-resonance-bg-tertiary">
         <h3 class="font-semibold text-white flex items-center gap-2">
             <span class="material-icons text-resonance-text-muted">push_pin</span>
@@ -1493,7 +1514,7 @@
 </div>
 
 <!-- Search Results Popup -->
-<div id="search-results-popup" class="fixed top-14 right-4 w-96 max-h-96 bg-resonance-bg-secondary rounded-lg shadow-xl z-50 hidden overflow-hidden">
+<div id="search-results-popup" class="fixed top-14 right-2 sm:right-4 w-[calc(100%-16px)] sm:w-96 max-h-96 bg-resonance-bg-secondary rounded-lg shadow-xl z-50 hidden overflow-hidden">
     <div class="p-3 border-b border-resonance-bg-tertiary flex items-center justify-between">
         <h3 class="font-semibold text-white flex items-center gap-2">
             <span class="material-icons text-resonance-text-muted">search</span>
